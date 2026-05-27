@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { configPath, readConfig, updateConfig } from "../config.js";
 import { printResult } from "../output.js";
+import type { GlobalOptions } from "../globals.js";
 
 export function registerConfigCommand(program: Command): void {
   const cmd = program.command("config").description("Manage CLI configuration (API token, default graph)");
@@ -11,14 +12,18 @@ export function registerConfigCommand(program: Command): void {
     .option("--token <token>", "Roam Research API token")
     .option("--graph <graph>", "Default graph name")
     .option("--capture-header <header>", "Default header used by `roam capture` (e.g. 'Captures from [[CLI]]')")
-    .action((opts: { token?: string; graph?: string; captureHeader?: string }) => {
-      if (!opts.token && !opts.graph && opts.captureHeader === undefined) {
+    .action((opts: { captureHeader?: string }, command) => {
+      const globals = command.optsWithGlobals() as GlobalOptions;
+      const token = globals.token;
+      const graph = globals.graph;
+
+      if (!token && !graph && opts.captureHeader === undefined) {
         process.stderr.write("Nothing to set. Pass --token, --graph, and/or --capture-header.\n");
         process.exit(2);
       }
       const next = updateConfig({
-        ...(opts.token ? { token: opts.token } : {}),
-        ...(opts.graph ? { graph: opts.graph } : {}),
+        ...(token ? { token } : {}),
+        ...(graph ? { graph } : {}),
         ...(opts.captureHeader !== undefined ? { captureHeader: opts.captureHeader } : {}),
       });
       printResult(

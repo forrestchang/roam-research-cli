@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+.env
+.env.local
+.vscode/
+.idea/
+.agent_context/
+.multica/
+CLAUDE.md
+.claude/

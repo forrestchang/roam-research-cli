@@ -268,6 +268,18 @@ Errors come out on stderr as JSON with `error`, `status`, `endpoint`, plus `retr
 
 Subcommands and flags are stable and self-documenting via `--help`. An agent can discover the full surface area with `roam --help` and `roam <command> --help`. Default output is single-line JSON suitable for piping into `jq` or parsing in an LLM tool-call.
 
+### Skill
+
+The repo ships an agent skill at [`skills/roam-research-cli/SKILL.md`](skills/roam-research-cli/SKILL.md) — a concise prompt that teaches an agent which command to reach for in each situation, the DNP UID quirks, the encrypted-graph append flow, and the exit-code contract.
+
+Install it into a [Multica](https://multica.ai) workspace with:
+
+```bash
+multica skill import --url https://github.com/forrestchang/roam-research-cli
+```
+
+Or copy `skills/roam-research-cli/SKILL.md` into your own agent harness (e.g. `~/.claude/skills/roam-research-cli/SKILL.md` for Claude Code).
+
 ## Development
 
 ```bash

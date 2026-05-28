@@ -7,6 +7,8 @@ export interface RoamConfig {
   graph?: string;
   /** Default header used by `roam capture` to group captures under a top-level block. */
   captureHeader?: string;
+  /** Desktop Local API token (starts with `roam-graph-local-token-`); needed by `roam file *`. */
+  localToken?: string;
 }
 
 export const DEFAULT_CAPTURE_HEADER = "Captures from [[CLI]]";

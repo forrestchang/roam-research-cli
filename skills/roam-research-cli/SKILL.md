@@ -1,6 +1,6 @@
 ---
 name: roam-research-cli
-description: "Read from and write to a Roam Research graph via the `roam` CLI. Use when the user asks to capture a note, search/read pages, list backlinks, manage TODOs, export a page to markdown, or run raw Datalog queries against their Roam graph."
+description: "Read from and write to a Roam Research graph via the `roam` CLI. Use when the user asks to capture a note, search/read pages, list backlinks, manage TODOs, export a page to markdown, upload/fetch/delete files, or run raw Datalog queries against their Roam graph."
 ---
 
 # Roam Research CLI
@@ -9,8 +9,8 @@ The `roam` CLI is installed globally and configured with the user's graph + API 
 
 ## Core principles
 
-- **Read first, then write.** For destructive operations (`block delete`, `page delete`, `block update`), confirm with the user before running.
-- **Prefer high-level commands** (`capture`, `today`, `search`, `outline`, `backlinks`, `tag`, `todo`, `export`) — they bundle common workflows.
+- **Read first, then write.** For destructive operations (`block delete`, `page delete`, `block update`, `file delete`), confirm with the user before running.
+- **Prefer high-level commands** (`capture`, `today`, `search`, `outline`, `backlinks`, `tag`, `todo`, `export`, `file`) — they bundle common workflows.
 - **Drop to low-level commands** (`query`, `pull`, `block`, `page`, `write`, `append`) only when the high-level ones don't fit.
 - **Self-document.** Every subcommand has `--help`. When unsure about a flag, run `roam <cmd> --help`.
 - **JSON-first.** Pipe output through `jq` rather than parsing prose; switch to `--pretty` only for human display.
@@ -27,6 +27,7 @@ The `roam` CLI is installed globally and configured with the user's graph + API 
 | "List blocks tagged #X" | `roam tag "<tag>"` |
 | "Show / complete a TODO" | `roam todo list` / `roam todo done <uid>` |
 | "Export <page> as markdown" | `roam export "<page>" -o page.md` |
+| "Upload / fetch / delete a file (image, PDF, ...)" | `roam file <upload\|get\|delete>` |
 | "Run this Datalog query" | `roam query '<datalog>'` |
 | "Pull this block/page" | `roam pull <eid>` |
 | "Create/update/move/delete a block" | `roam block <create|update|move|delete>` |
@@ -95,7 +96,41 @@ roam append --page "Inbox" --data '[{"string":"parent","children":[{"string":"ch
 
 Server limits: 200 KB per request, 30 req/min, 20 MB/h. `429` responses include `retry-after-seconds`.
 
-## Desktop Local API (optional)
+## Files (`roam file upload | get | delete`)
+
+Upload, fetch, or delete files (images, PDFs, etc.) hosted on Roam. File operations are **only** available via the Desktop Local API, so the Roam desktop app must be running and you need a separate **Local API token** — distinct from the backend graph token used by all other commands.
+
+```bash
+# One-time setup (token starts with 'roam-graph-local-token-', created in
+# Roam Desktop -> Settings -> Graph -> Local API Tokens)
+roam config set --local-token roam-graph-local-token-xxxxxxxx
+# or, per-invocation:
+export ROAM_LOCAL_API_TOKEN=roam-graph-local-token-xxxxxxxx
+```
+
+```bash
+# Upload a local file -> returns the Firebase storage URL (as `![](URL)` markdown)
+roam file upload --file ./screenshot.png
+
+# Upload by fetching a remote URL
+roam file upload --url https://example.com/diagram.svg
+
+# Inline it into a block (the upload URL embeds directly as an image)
+URL=$(roam file upload --file ./pic.png | jq -r .url)
+roam capture "Pic of the day: ![]($URL)"
+
+# Fetch a Roam-hosted file by URL; pass -o to write bytes to disk (images/PDFs)
+roam file get "https://firebasestorage.googleapis.com/..." -o ./local.png
+
+# Delete a Roam-hosted file by URL — confirm with the user first
+roam file delete "https://firebasestorage.googleapis.com/..."
+```
+
+Implementation note: this wraps the official `@roam-research/roam-tools-core` + `-local` packages, so MIME-type detection, base64 handling, and the markdown-wrapped response parsing match Roam-published behavior. You don't have to pre-detect MIME — the CLI handles it.
+
+Common pitfall: if `roam file *` errors with a connection refused / Local API not reachable, the desktop app isn't running (or Local API is disabled). Ask the user to open Roam Desktop and enable the Local API in Settings -> Graph.
+
+## Desktop Local API (general)
 
 If the user runs Roam Desktop with the local HTTP server enabled (`localhost:3333`), `roam local *` calls hit the local process instead of the cloud:
 
@@ -107,7 +142,7 @@ roam local pull <uid> --selector '[:block/string]'
 roam local invoke util.generate-uid
 ```
 
-Newer Roam Desktop versions require a separate **local API token** for `data.*` mutations (generated in desktop Settings, distinct from the graph API token). Read-only calls still work without it.
+Newer Roam Desktop versions require a separate **local API token** for `data.*` mutations (the same `--local-token` / `ROAM_LOCAL_API_TOKEN` / `roam config set --local-token` plumbing used by `roam file *`). Read-only calls still work without it.
 
 ## Exit codes
 
@@ -126,13 +161,13 @@ Errors go to stderr as JSON: `{error, status, endpoint, ...}`.
 ## Configuration
 
 Token + graph resolution order (highest priority first):
-1. CLI flag (`--token`, `--graph`)
-2. Env vars (`ROAM_API_TOKEN`, `ROAM_GRAPH`)
+1. CLI flag (`--token`, `--graph`, `--local-token`)
+2. Env vars (`ROAM_API_TOKEN`, `ROAM_GRAPH`, `ROAM_LOCAL_API_TOKEN`)
 3. Config file (`~/.config/roam-cli/config.json`)
 
-The user's token and default graph are already set. Verify with `roam config show`. **Never print the raw token.** `roam config show` masks it.
+The user's backend token and default graph are already set. Verify with `roam config show`. **Never print the raw token.** `roam config show` masks both `token` and `localToken` as `***`.
 
-> Known bug: `roam config set --token ... --graph ...` may fail with "Nothing to set" because Commander.js bubbles `--token`/`--graph` to the program-level options. Workaround: edit `~/.config/roam-cli/config.json` directly, or set `ROAM_API_TOKEN` / `ROAM_GRAPH` env vars.
+`roam config set` accepts `--token`, `--graph`, `--capture-header`, and `--local-token` in any combination.
 
 ## Agent tips
 
@@ -140,3 +175,4 @@ The user's token and default graph are already set. Verify with `roam config sho
 - When chaining multiple writes, prefer `roam write --atomic` over a sequence of `block create` calls — atomic gives an all-or-nothing guarantee.
 - For interactive sessions, default to `--pretty` for display but keep raw JSON when piping.
 - Don't fabricate UIDs. Always `search` / `pull` / `query` to obtain a real UID before writing against it.
+- For file uploads, capture the returned URL into a variable (`URL=$(roam file upload ... | jq -r .url)`) before embedding it into a block — the URL is the only handle you'll have for `file get` / `file delete` later.

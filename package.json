@@ -1,6 +1,6 @@
 {
   "name": "roam-research-cli",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A CLI for the Roam Research APIs (Backend + Append + Desktop Local), designed to be friendly to humans and AI agents.",
   "type": "module",
   "bin": {
@@ -33,6 +33,8 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@roam-research/roam-tools-core": "^0.6.5",
+    "@roam-research/roam-tools-local": "^0.6.5",
     "commander": "^12.1.0"
   },
   "devDependencies": {

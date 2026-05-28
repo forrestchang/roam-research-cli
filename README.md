@@ -6,7 +6,7 @@ Covers all three public surfaces:
 
 It exposes two layers:
 
-- **High-level commands** (`capture`, `today`, `search`, `outline`, `backlinks`, `todo`, `tag`, `export`) for the everyday workflows you don't want to keep re-writing as Datalog.
+- **High-level commands** (`capture`, `today`, `search`, `outline`, `backlinks`, `todo`, `tag`, `export`, `file`) for the everyday workflows you don't want to keep re-writing as Datalog.
 - **Low-level primitives** (`query`, `pull`, `pull-many`, `block`, `page`, `write`, `append`, `local`) that map 1:1 onto Roam's three public APIs:
 
 | API | Base URL | What it's for | Commands |
@@ -125,6 +125,39 @@ Same data shape as `backlinks` but reads as "find all blocks tagged X". `#foo` a
 roam tag "research" --limit 50
 roam tag "research" --count
 ```
+
+### `roam file upload | get | delete`
+
+Upload, fetch, or delete files (images, PDFs, etc.) hosted on Roam. This is the only file API Roam exposes, and it lives on the **Desktop Local API** — so the desktop app must be running and you need a separate **Local API token** (different from the backend graph token):
+
+```bash
+# One-time setup
+roam config set --local-token roam-graph-local-token-xxxxxxxx
+# or:
+export ROAM_LOCAL_API_TOKEN=roam-graph-local-token-xxxxxxxx
+```
+
+Create that token in Roam Desktop → **Settings → Graph → Local API Tokens**.
+
+```bash
+# Upload a local file (returns the Firebase storage URL)
+roam file upload --file ./screenshot.png
+
+# Upload a file fetched from a remote URL
+roam file upload --url https://example.com/diagram.svg
+
+# Use the URL inline in a block (it's a normal `![](URL)` markdown image)
+URL=$(roam file upload --file ./pic.png | jq -r .url)
+roam capture "Pic of the day: ![]($URL)"
+
+# Fetch a Roam-hosted file by URL (write bytes to disk with --output)
+roam file get "https://firebasestorage.googleapis.com/..." -o ./local.png
+
+# Delete a Roam-hosted file by URL
+roam file delete "https://firebasestorage.googleapis.com/..."
+```
+
+Implementation: this command wraps the official `@roam-research/roam-tools-core` / `-local` packages, so MIME-type detection, base64 handling, and the markdown-wrapper response parsing all match the Roam-published behavior.
 
 ### `roam export <page>`
 

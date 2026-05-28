@@ -16,6 +16,7 @@ import { registerBacklinksCommand } from "./commands/backlinks.js";
 import { registerTodoCommand } from "./commands/todo.js";
 import { registerTagCommand } from "./commands/tag.js";
 import { registerExportCommand } from "./commands/export.js";
+import { registerFileCommand } from "./commands/file.js";
 import { RoamApiError } from "./client.js";
 
 const program = new Command();
@@ -25,7 +26,7 @@ program
   .description(
     "CLI for the Roam Research APIs (Backend + Append + Desktop Local) — friendly to humans and AI agents."
   )
-  .version("0.3.0")
+  .version("0.4.0")
   .option("--token <token>", "Override API token (else uses ROAM_API_TOKEN or config)")
   .option("--graph <graph>", "Override graph name (else uses ROAM_GRAPH or config)")
   .option("--pretty", "Pretty-print JSON output (default is compact)", false);
@@ -46,6 +47,7 @@ registerPageCommand(program);
 registerWriteCommand(program);
 registerAppendCommand(program);
 registerLocalCommand(program);
+registerFileCommand(program);
 
 program.parseAsync(process.argv).catch(err => {
   if (err instanceof RoamApiError) {
